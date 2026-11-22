@@ -1,0 +1,110 @@
+{
+  "llama-server": {
+    "version": "b12627",
+    "release_type": "nightly",
+    "source_url": "https://github.com/ggml-org/llama.cpp/releases/tag/b12627",
+    "sha256": null,
+    "binaries": {
+      "windows-cpu-x64": {
+        "asset_name": "llama-cpp-bin-windows-cpu-x64.zip",
+        "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/llama-cpp-bin-windows-cpu-x64.zip",
+        "platforms": ["win32"]
+      },
+      "linux-cuda-x64": {
+        "asset_name": "llama-cpp-bin-linux-cuda-x86_64.zip",
+        "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/llama-cpp-bin-linux-cuda-x86_64.zip",
+        "platforms": ["linux"],
+        "requires_lib": "libcuda"
+      },
+      "linux-rocm-x64": {
+        "asset_name": "llama-cpp-bin-linux-rocm-x86_64.zip",
+        "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/llama-cpp-bin-linux-rocm-x86_64.zip",
+        "platforms": ["linux"],
+        "requires_lib": "librocm"
+      },
+      "linux-vulkan-x64": {
+        "asset_name": "llama-cpp-bin-linux-vulkan-x86_64.zip",
+        "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/llama-cpp-bin-linux-vulkan-x86_64.zip",
+        "platforms": ["linux"],
+        "requires_lib": "libvulkan"
+      },
+      "macos-metal-arm64": {
+        "asset_name": "llama-cpp-bin-macos-arm64.tar.gz",
+        "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/llama-cpp-bin-macos-arm64.tar.gz",
+        "platforms": ["darwin"],
+        "requires_lib": "libmetal"
+      },
+      "macos-cpu-x64": {
+        "asset_name": "llama-cpp-bin-macos-x86_64.zip",
+        "download_url": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/llama-cpp-bin-macos-x86_64.zip",
+        "platforms": ["darwin"],
+        "requires_lib": false
+      }
+    },
+    "cli_flags": [
+      {"name": "-m, --model", "env": "LLAMA_ARG_MODEL"},
+      {"name": "-hf, --hf-repo", "env": "LLAMA_ARG_HF_REPO"},
+      {"name": "-c, --ctx-size", "env": "LLAMA_ARG_CTX_SIZE"},
+      {"name": "-ngl, --gpu-layers", "env": "LLAMA_ARG_N_GPU_LAYERS"},
+      {"name": "-np, --parallel", "env": "LLAMA_ARG_N_PARALLEL"},
+      {"name": "--host", "env": "LLAMA_ARG_HOST"},
+      {"name": "--port", "env": "LLAMA_ARG_PORT"},
+      {"name": "--api-key", "env": "LLAMA_API_KEY"},
+      {"name": "-ctk, --cache-type-k", "env": "LLAMA_ARG_CACHE_TYPE_K"},
+      {"name": "-ctv, --cache-type-v", "env": "LLAMA_ARG_CACHE_TYPE_V"},
+      {"name": "--metrics", "env": "LLAMA_ARG_ENDPOINT_METRICS"},
+      {"name": "--slots", "env": "LLAMA_ARG_ENDPOINT_SLOTS"}
+    ]
+  },
+  "sd-cli": {
+    "version": "master-1106",
+    "release_type": "nightly",
+    "source_url": "https://github.com/leejet/stable-diffusion.cpp/releases/latest",
+    "sha256": null,
+    "binaries": {
+      "windows-cpu-x64": {
+        "asset_name": "sd-master-532d2c1-bin-win-cpu-x64.zip",
+        "download_url": "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1106-532d2c1/sd-master-532d2c1-bin-win-cpu-x64.zip",
+        "platforms": ["win32"],
+        "binary_name_in_archive": "sd-cli.exe"
+      },
+      "linux-cuda-x64": {
+        "asset_name": "sd-master-532d2c1-bin-linux-cuda12-x64.zip",
+        "download_url": "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1106-532d2c1/sd-master-532d2c1-bin-win-cuda12-x64.zip",
+        "platforms": ["linux"],
+        "requires_gpu": { "nvidia": true },
+        "binary_name_in_archive": "sd-cli"
+      },
+      "linux-rocm-x64": {
+        "asset_name": "sd-master-1d0a58a-bin-linux-Ubuntu-24.04-x86_64-rocm-10.1.0.zip",
+        "download_url": "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-964-1d0a58a/sd-master-1d0a58a-bin-linux-Ubuntu-24.04-x86_64-rocm-10.1.0.zip",
+        "platforms": ["linux"],
+        "requires_gpu": { "amd": true },
+        "binary_name_in_archive": "sd-cli"
+      },
+      "linux-vulkan-x64": {
+        "asset_name": "sd-master-3bad892-bin-linux-Ubuntu-26.04-x86_64.zip",
+        "download_url": "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1097-4b51674/sd-master-3bad892-bin-Linux-Ubuntu-26.04-x86_64.zip",
+        "platforms": ["linux"],
+        "requires_gpu": { "vulkan": true },
+        "binary_name_in_archive": "sd-cli"
+      },
+      "macos-metal-arm64": {
+        "asset_name": "sd-master-3bad892-bin-Darwin-macOS-26.7.2-arm64.zip",
+        "download_url": "https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1094-3bad892/sd-master-3bad892-bin-Darwin-macOS-26.7.2-arm64.zip",
+        "platforms": ["darwin"],
+        "requires_gpu": { "metal": true },
+        "binary_name_in_archive": "sd-cli"
+      }
+    },
+    "cli_flags": [
+      {"name": "-m, --model", "desc": "Model path (.safetensors or .gguf)"},
+      {"name": "-p, --prompt", "desc": "Prompt text"},
+      {"name": "--steps", "desc": "Sampling steps (default 25)"},
+      {"name": "--cfg-scales", "desc": "CFG scale (default 7.0)"},
+      {"name": "--sampler", "desc": "Sampler name (Euler a, DPM++ 2M Karras, etc.)"},
+      {"name": "--seed", "desc": "Random seed (-1 = random)"},
+      {"name": "--resolutions", "desc": "Output resolution (e.g., '512x512', '832x832')"}
+    ]
+  }
+}

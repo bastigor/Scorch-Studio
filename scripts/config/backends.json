@@ -1,0 +1,26 @@
+{
+  "llama-server": {
+    "version": "nightly b12627",
+    "url_template": "https://github.com/ggerganov/llama-server/releases/download/",
+    "sha256_placeholder": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
+    "platforms": {
+      "windows_cpu": {"asset": "llama-cpp-bin-windows-cpu-x64.zip"},
+      "linux_cuda": {"asset": "llama-cpp-bin-linux-cuda-x64-12.1.zip"},
+      "macos_metal": {"asset": "llama-cpp-bin-macos-app.dmg"}
+    }
+  },
+  "sd-cli": {
+    "version": "master-1106",
+    "url_template": "https://github.com/haart/stable-diffusion.cpp/releases/download/",
+    "sha256_placeholder": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
+    "platforms": {
+      "windows_cpu": {"asset": "sd-master-532d2c1-bin-win-cpu-x64.zip", "size_mb": 18},
+      "linux_cuda": {"asset": "sd-master-linux-cuda-12.1.tar.gz"},
+      "macos_metal": {"asset": "sd-master-macos-app.dmg"}
+    }
+  },
+  "default_config": {
+    "backend": "cpu",
+    "workspace_policy": "exclusive"
+  }
+}

@@ -1,0 +1,39 @@
+# Scorch Theme - Red Dark Mode TCSS Styles
+
+"""Red-themed dark terminal UI with high contrast for readability."""
+
+background #0d0505;
+surface #150808;
+border normal #7a1c1c; border focused #ff4d4d;
+text #f2dede; secondary #a06a6a; primary #e03131; highlight #ff6b6b;
+
+# Colors for different states and elements
+error #ff2a2a; warning #ffb86c; success #50fa7b; info #6272a4;
+
+# Special surfaces for panels
+panel-surface #1f0e0e; panel-focus #2a1313;
+
+# Status bar colors
+status-background #150808; status-text #a06a6a;
+
+# Button states
+button-normal background #1a0c0c text #f2dede; button-hover background #251111; button-focused background #3d1919 border focused #ff4d4d;
+button-disabled background #0f0707 text #503636;
+
+# Scrollbar styling
+scrollbar-background surface scrollbar-border border;
+scrollbar-thumb surface scroll-thin;
+
+# Focus indicators
+focus-ring 2px border-focused ring-inset transparent ring-offset-1px;
+
+# Utility styles
+mono font-family monospace size 14;
+small text-size-80% secondary;
+medium text-size-110%;
+large text-size-130% primary;
+
+# Panel styling (used everywhere)
+panel border border normal border-thick surface;
+panel-title border-top border-bottom border-style solid border-width 2px;
+panel-title-text center large white;
