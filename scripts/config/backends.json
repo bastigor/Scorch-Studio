@@ -1,20 +1,30 @@
 {
   "llama-server": {
     "version": "nightly b12627",
-    "url_template": "https://github.com/ggerganov/llama-server/releases/download/",
-    "sha256_placeholder": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
+    "url_template": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/",
     "platforms": {
-      "windows_cpu": {"asset": "llama-cpp-bin-windows-cpu-x64.zip"},
+      "windows_cpu": {
+        "asset": "llama-b12627-bin-win-cpu-x64.zip",
+        "binary_name": "llama-server.exe",
+        "sha256_windows_cpu": "32760b430fc8047676ed307eebaa9a1d3c81d407083f0ab60f140b7d8ac8abe3",
+        "sha256_linux_cuda": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
+        "sha256_macos_metal": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      },
       "linux_cuda": {"asset": "llama-cpp-bin-linux-cuda-x64-12.1.zip"},
       "macos_metal": {"asset": "llama-cpp-bin-macos-app.dmg"}
     }
   },
   "sd-cli": {
     "version": "master-1106",
-    "url_template": "https://github.com/haart/stable-diffusion.cpp/releases/download/",
-    "sha256_placeholder": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
+    "url_template": "https://github.com/leejet/stable-diffusion.cpp/releases/download/",
     "platforms": {
-      "windows_cpu": {"asset": "sd-master-532d2c1-bin-win-cpu-x64.zip", "size_mb": 18},
+      "windows_cpu": {
+        "asset": "sd-master-532d2c1-bin-win-cpu-x64.zip",
+        "binary_name": "sd-cli.exe",
+        "sha256_windows_cpu": "f21ed13959d238106815e2feb2062129181aa108355ada1faef3fda23655a556",
+        "sha256_linux_cuda": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
+        "sha256_macos_metal": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      },
       "linux_cuda": {"asset": "sd-master-linux-cuda-12.1.tar.gz"},
       "macos_metal": {"asset": "sd-master-macos-app.dmg"}
     }
