@@ -1,6 +1,7 @@
-"""Base screen class with action handlers."""
+"""Base screen class with action handlers.
 
-from pathlib import Path
+Provides default implementations for common actions used across screens."""
+
 from textual.widgets import Static
 
 
@@ -50,11 +51,11 @@ class BaseScreen(Static):
         """Open settings screen."""
         self.app.switch_screen("settings")
     
-    def action_show_help(self):
+    def action_show_help(self) -> None:
         """Display help text."""
         print("Scorch - Offline TUI AI Studio")
-        print("
-Controls:")
+        print()
+        print("Controls:")
         print("Ctrl+1: Chat Screen")
         print("Ctrl+2: Image Generation")
         print("Ctrl+3: Settings")

@@ -139,7 +139,7 @@ class BackendManager:
             llama_binary = self.llama_binary
             
             if not llama_binary.exists():
-                print(f"Warning: llma-server binary not found at {llama_binary}")
+                print(f"Warning: llama-server binary not found at {llama_binary}")
                 return False
             
             # Build command with model path and port
@@ -180,7 +180,7 @@ class BackendManager:
             for _ in range(30):  # Max 30 seconds
                 proc.terminate()  # Send SIGTERM
                 await asyncio.sleep(0.5)
-                 
+                  
                 if proc.poll() is not None:
                     break
                     
@@ -214,7 +214,7 @@ def generate_image_via_sdcli(
         prompt: Text description of the desired image
         output_dir: Directory to save the generated image (default: outputs/images)
         checkpoint_path: Path to Stable Diffusion checkpoint (.safetensors/.ckpt)
-                       If None, will search for models in 'models/' directory
+                        If None, will search for models in 'models/' directory
         steps: Number of diffusion steps (default: 30)
         cfg_scale: Classifier-free guidance scale (default: 7.5)
         seed: Random seed for reproducibility (optional)
@@ -300,6 +300,12 @@ def generate_image_via_sdcli(
         print("Generation timed out after 5 minutes. Check logs for details.")
         return None
     
+    except subprocess.CalledProcessError as e:
+        print(f"sd-cli failed with error code {e.returncode}")
+        if e.stderr:
+            print(f"stderr: {e.stderr[:200]}")
+        return None
+    
     except Exception as e:
         print(f"Error generating image: {e}")
         import traceback
@@ -345,7 +351,7 @@ def download_file(url: str, output_path: Path) -> bool:
         True if download completed successfully, False otherwise
     """
     try:
-        import urllib.request as urlopen  # Python 2 compatible
+        import urllib.request as urlopen
         
         output_path.parent.mkdir(parents=True, exist_ok=True)
         

@@ -6,7 +6,7 @@ Features include message history, Markdown rendering, and responsive UI updates.
 import asyncio
 import re
 from textual import work
-from textual.app import ComposeResult
+from textual.app import ComposeResult, App
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import (
     Header, Footer, Static, Label, ProgressBar, Button,
@@ -73,11 +73,9 @@ class ChatScreen(BorderedPanel):
         yield Header()
         
         # Main container for messages and input
-        yield Container(
-            Vertical(id="chat-container"),
-            classes="chat-container"
-        )
-
+        main_container = Container(id="chat-container")
+        yield main_container
+        
         # Footer with actions
         footer = Horizontal(
             Input(placeholder=Strings.CHAT_INPUT_PLACEHOLDER, id="chat-input", autocomplete="off"),
@@ -86,7 +84,12 @@ class ChatScreen(BorderedPanel):
         
         yield Static("Chat |", classes="footer")
         yield footer
-
+        
+        # Add loading indicator (hidden by default)
+        loading_indicator = LoadingIndicator(id="loading-indicator")
+        self.loading_indicator = loading_indicator
+        
+        yield loading_indicator
     @work
     async def start_conversation(self) -> None:
         """Start a new conversation with the LLM."""
@@ -160,7 +163,6 @@ class ChatScreen(BorderedPanel):
         
         return bubble
 
-    @work
     async def send_message(self) -> None:
         """Process and send a message from the input field."""
         text = self.query_one("#chat-input", TextArea).value
@@ -177,7 +179,7 @@ class ChatScreen(BorderedPanel):
 
         # Start streaming response
         self.is_streaming = True
-        self.query_one("#loading-indicator", LoadingIndicator).visible = True
+        self.loading_indicator.visible = True
         
         try:
             async for chunk in self.stream_response(text):
@@ -190,7 +192,7 @@ class ChatScreen(BorderedPanel):
         except Exception as e:
             await self.add_system_message(f"Error: {e}")
             self.is_streaming = False
-            self.query_one("#loading-indicator", LoadingIndicator).visible = False
+            self.loading_indicator.visible = False
 
     @work
     async def stream_response(self, prompt: str) -> None:
@@ -266,7 +268,10 @@ class ChatScreen(BorderedPanel):
         # Find the last assistant message and update it
         for msg in reversed(self.messages):
             if msg["role"] == "assistant":
-                self.query_one(f"#{msg['content']}", MessageBubble).update_content(chunk)
+                # Update the message bubble content
+                last_bubble = self.query_one(f"#{msg['content'].replace(' ', '-')}")
+                if last_bubble:
+                    last_bubble.update_content(chunk)
                 break
 
     @work
@@ -281,9 +286,10 @@ class ChatScreen(BorderedPanel):
             # Textual 0.46+ API
             container.scrollend(Offset(top=0))
 
-    def action_show_chat(self):
+    def action_show_chat(self) -> None:
         """Show the chat screen."""
-        pass
+        from scorch.screens import ChatScreen
+        self.push_screen(ChatScreen(self))
 
     def action_copy_last_message(self):
         """Copy the last message to clipboard."""

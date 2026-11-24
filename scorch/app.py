@@ -25,9 +25,21 @@ __version__ = "0.1.0"
 
 
 class ScorchApp(App):
-    """Main application class using Textual framework."""
+    """Main application class using Textual framework.
+    
+    Scorch is an offline-first, portable terminal UI for local LLM chat and image generation.
+    
+    No telemetry. No global installation. All runtime, backends, and dependencies 
+    download into the project folder on first launch.
+    
+    Two tools:
+    - Chat: Streamed LLM responses via llama.cpp (OpenAI-compatible API)
+    - Images: Stable Diffusion via stable-diffusion.cpp (sd-cli)
+    
+    Cross-platform support: Windows 10/11 x64, Linux x86_64, macOS Apple Silicon.
+    """
 
-    CSS = None  # Will load from theme.tcss
+    CSS = "scorch/theme.tcss"
     
     BINDINGS = [
         Binding("ctrl+1", "switch_chat", "Chat"),
@@ -84,7 +96,7 @@ class ScorchApp(App):
         """Toggle visibility of side panels."""
         pass  # Implemented in individual screens
 
-    def action_quit(self) -> None:
+    async def action_quit(self) -> None:
         """Quit the application and stop all backend processes."""
         if self.engine_manager:
             self.engine_manager.stop_all_processes()
@@ -92,18 +104,27 @@ class ScorchApp(App):
 
     async def on_mount(self) -> None:
         """Called when app is mounted."""
-        # Initialize components after all screens are loaded
+        # Initialize components after UI is composed
         await self._initialize_components()
-
-    @work
-    async def _initialize_components(self) -> None:
-        """Initialize engine manager, storage, and model manager in background."""
         
+        # Switch to chat screen by default
+        self.push_screen(self.chat_screen)
+
+    async def _initialize_components(self) -> None:
+        """Initialize engine manager, storage, model manager, and screens in background."""
         from scorch.engines.manager import EngineManager
         from scorch.storage import StorageManager
         
         self.engine_manager = EngineManager(self)
         self.storage = StorageManager()
+        
+        # Import and create screen instances after initialization
+        from scorch.screens import ChatScreen, ImagesScreen, SettingsScreen, ModelsScreen
+        
+        self.chat_screen = ChatScreen(self)
+        self.images_screen = ImagesScreen(self)
+        self.settings_screen = SettingsScreen(self)
+        self.models_screen = ModelsScreen(self)
 
 
 class ChatScreen(Screen):

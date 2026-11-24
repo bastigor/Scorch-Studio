@@ -7,6 +7,7 @@ from textual.widgets import (
     Static, Label, Radio, Button, Footer, Header,
     Select, TextArea
 )
+from textual.binding import Binding
 
 from scorch.storage import StorageManager
 
@@ -107,7 +108,7 @@ class SettingsScreen(Screen):
             await self.query_one("#settings-container", Container).remove(
                 self.query_one("#save-success") if self.query_one("#save-success") else None
             )
-            
+        
         asyncio.create_task(show_save_confirmation())
 
     def action_cancel_and_quit(self) -> None:
