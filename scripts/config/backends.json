@@ -1,32 +1,69 @@
 {
   "llama-server": {
-    "version": "nightly b12627",
+    "version": "b12627",
     "url_template": "https://github.com/ggml-org/llama.cpp/releases/download/b12627/",
     "platforms": {
       "windows_cpu": {
-        "asset": "llama-b12627-bin-win-cpu-x64.zip",
+        "asset": "llama-cpp-bin-windows-cpu-x64.zip",
         "binary_name": "llama-server.exe",
-        "sha256_windows_cpu": "32760b430fc8047676ed307eebaa9a1d3c81d407083f0ab60f140b7d8ac8abe3",
-        "sha256_linux_cuda": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
-        "sha256_macos_metal": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+        "sha256_windows_cpu": "32760b430fc8047676ed307eebaa9a1d3c81d407083f0ab60f140b7d8ac8abe3"
       },
-      "linux_cuda": {"asset": "llama-cpp-bin-linux-cuda-x64-12.1.zip"},
-      "macos_metal": {"asset": "llama-cpp-bin-macos-app.dmg"}
+      "linux_cpu": {
+        "asset": "llama-cpp-bin-linux-cpu-x86_64.zip",
+        "binary_name": "llama-server",
+        "sha256_linux_cpu": "TO_BE_VERIFIED_LATER"
+      },
+      "linux_cuda": {
+        "asset": "llama-cpp-bin-linux-cuda-x86_64.zip",
+        "binary_name": "llama-server",
+        "sha256_linux_cuda": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      },
+      "linux_rocm": {
+        "asset": "llama-cpp-bin-linux-rocm-x86_64.zip",
+        "binary_name": "llama-server",
+        "sha256_linux_rocm": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      },
+      "linux_vulkan": {
+        "asset": "llama-cpp-bin-linux-vulkan-x86_64.zip",
+        "binary_name": "llama-server",
+        "sha256_linux_vulkan": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      },
+      "macos_metal": {
+        "asset": "llama-cpp-bin-macos-arm64.tar.gz",
+        "binary_name": "bin/llama-server",
+        "sha256_macos_metal": "TO_BE_VERIFIED_AFTER_EXTRACT"
+      }
     }
   },
   "sd-cli": {
-    "version": "master-1106",
+    "version": "master-532d2c1",
     "url_template": "https://github.com/leejet/stable-diffusion.cpp/releases/download/",
     "platforms": {
       "windows_cpu": {
         "asset": "sd-master-532d2c1-bin-win-cpu-x64.zip",
         "binary_name": "sd-cli.exe",
-        "sha256_windows_cpu": "f21ed13959d238106815e2feb2062129181aa108355ada1faef3fda23655a556",
-        "sha256_linux_cuda": "TO_BE_VERIFIED_AFTER_DOWNLOAD",
-        "sha256_macos_metal": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+        "sha256_windows_cpu": "f21ed13959d238106815e2feb2062129181aa108355ada1faef3fda23655a556"
       },
-      "linux_cuda": {"asset": "sd-master-linux-cuda-12.1.tar.gz"},
-      "macos_metal": {"asset": "sd-master-macos-app.dmg"}
+      "linux_cpu": {
+        "asset": "sd-master-linux-cpu-x86_64.zip",
+        "binary_name": "sd-cli",
+        "sha256_linux_cpu": "TO_BE_VERIFIED_LATER"
+      },
+      "linux_cuda": {
+        "asset": "sd-master-linux-cuda-x86_64.zip",
+        "binary_name": "sd-cli",
+        "sha256_linux_cuda": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      },
+      "linux_rocm": {
+        "asset": "sd-master-1d0a58a-bin-linux-Ubuntu-24.04-x86_64-rocm-10.1.0.zip",
+        "binary_name": "sd-cli",
+        "sha256_linux_rocm": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      },
+      "macos_metal": {
+        "asset": "sd-master-3bad892-bin-Darwin-macOS-arm64.zip",
+        "binary_name": "sd-cli",
+        "sha256_macos_metal": "TO_BE_VERIFIED_AFTER_DOWNLOAD"
+      }
     }
   },
   "default_config": {

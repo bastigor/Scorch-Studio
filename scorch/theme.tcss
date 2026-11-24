@@ -1,39 +1,137 @@
-# Scorch Theme - Red Dark Mode TCSS Styles
+# Scorch TCSS Theme - Dark Red Scheme
+"""Red-themed dark UI using Textual CSS Variables (TCSS).
 
-"""Red-themed dark terminal UI with high contrast for readability."""
+This theme provides a cohesive red/dark color scheme with proper contrast ratios.
+All colors are defined as variables for easy theming and consistency.
+"""
 
-background #0d0505;
-surface #150808;
-border normal #7a1c1c; border focused #ff4d4d;
-text #f2dede; secondary #a06a6a; primary #e03131; highlight #ff6b6b;
+// SCORCH THEME VARIABLES
 
-# Colors for different states and elements
-error #ff2a2a; warning #ffb86c; success #50fa7b; info #6272a4;
+/* Primary Colors - Red Theme */
+$primary = #f87171;          /* Main red accent (high visibility) */
+$secondary = #a78bfa;        /* Purple-blue for secondary elements */
+$error = #ef4444;            /* Error/red state color */
 
-# Special surfaces for panels
-panel-surface #1f0e0e; panel-focus #2a1313;
+/* Background Colors - Dark Mode */
+$background = #0d0d0d;       /* Main app background (near black) */
+$surface = #1a1a1a;          /* Content surface/background */
+$panel-surface = #262626;    /* Panel/side panel background */
 
-# Status bar colors
-status-background #150808; status-text #a06a6a;
+/* Text Colors - High Contrast */
+$text = #f3f4f6;             /* Primary text (off-white) */
+$secondary-text = #9ca3af;   /* Secondary/muted text */
+$error-text = $error;        /* Error state text */
 
-# Button states
-button-normal background #1a0c0c text #f2dede; button-hover background #251111; button-focused background #3d1919 border focused #ff4d4d;
-button-disabled background #0f0707 text #503636;
+/* Border Colors - Consistent with theme */
+$border = $primary;          /* Main border color (red) */
+$border-focused = #f85050;   /* Focused/bordered element accent */
 
-# Scrollbar styling
-scrollbar-background surface scrollbar-border border;
-scrollbar-thumb surface scroll-thin;
+/* Button Colors - Interactive States */
+$button-hover = $secondary;  /* Hover state for buttons */
+$button-active = $primary;   /* Active/pressed button state */
 
-# Focus indicators
-focus-ring 2px border-focused ring-inset transparent ring-offset-1px;
+// COMPONENT STYLES
 
-# Utility styles
-mono font-family monospace size 14;
-small text-size-80% secondary;
-medium text-size-110%;
-large text-size-130% primary;
+/* Header Component */
+#app-header {
+    height: 2;
+    border-bottom: thick solid $border;
+    
+    & > Header {
+        font-size: 16px;
+        text-color: $text;
+        
+        #title-text {
+            color: $primary;
+            font-weight: bold;
+        }
+    }
+}
 
-# Panel styling (used everywhere)
-panel border border normal border-thick surface;
-panel-title border-top border-bottom border-style solid border-width 2px;
-panel-title-text center large white;
+// Footer Component
+#app-footer {
+    height: 2;
+    border-top: thick solid $border;
+    padding: 0.5;
+    
+    & > Static#footer-content {
+        font-size: small;
+        text-color: $secondary-text;
+    }
+}
+
+// Main Container
+#main-container {
+    width: 100%;
+    height: calc(100% - 4); /* Subtract header and footer */
+    
+    &.small-terminal {
+        display: none;
+    }
+}
+
+/* Button Styling */
+Button {
+    padding: 0.5;
+    margin-right: 0.25;
+    background: $surface;
+    border-color: $border;
+    
+    &:hover {
+        background: $button-hover;
+    }
+    
+    &:selected {
+        border-color: $border-focused;
+        color: #ffffff;
+    }
+}
+
+/* Input Fields */
+Input, MultiLine {
+    padding: 0.5;
+    background: surface;
+    border-color: $border;
+    
+    &::placeholder {
+        color: $secondary-text;
+        opacity: 0.7;
+    }
+    
+    &:focus-within {
+        border-color: $primary;
+    }
+}
+
+/* Static Widgets */
+Static {
+    background: surface;
+    padding: 1;
+    
+    & > * {\n            margin-bottom: 0;\n            \n            &:last-child {\n                margin-bottom: 0;\n            }\n        }\n}
+
+// Bordered Panel with Title in Border
+BorderedPanel {
+    background: $background;\n        
+    border-color: $border;
+    
+    #panel-title {\n        font-size: 18px;\n        color: $primary;\n        text-align: center;\n        margin-bottom: 0.5;\n        
+        &.dimmed {\n            opacity: 0.7;\n        }\n    }
+    
+    #panel-content {\n        padding: 1;\n        scrollable: true;\n    }\n}
+
+// Progress Panel (Left Sidebar)\n#progress-panel {\n    width: 30%;\n    min-width: 250px;\n    max-height: calc(100% - 6);\n    overflow-y: auto;\n    padding: 1;\n    background: panel-surface;\n    border-color: $border;\n}
+
+// Gallery Panel (Right Sidebar)\n#gallery-container {\n    width: 64%;\n    min-width: 350px;\n    max-height: calc(100% - 6);\n    overflow-y: auto;\n    padding: 1;\n    background: panel-surface;\n    border-color: $border;\n}
+
+// Terminal Preview Widget
+TerminalPreviewWidget {\n    background: #0d0d0d;\n    border-color: $border;\n    \n    & > * {\n        margin-bottom: 0.25;\n        \n        &:last-child {\n            margin-bottom: 0;\n        }\n    }\n}
+
+// Message Bubbles (Chat)\n.message-bubble {\n    padding: 1;\n    background: surface;\n    border-radius: 4px;\n    \n    &.user-message {\n        background: $secondary;
+            color: #ffffff;\n            margin-left: auto;\n            text-align: right;\n        }\n        \n    &.assistant-message {\n        margin-right: auto;\n    }\n}
+
+// Streaming Indicator\n#streaming-indicator {\n    font-size: small;\n    color: $error;\n    margin-left: 0.5;\n    animation: pulse 1s infinite;\n}\n\n@keyframes pulse {\n    0%, 100% { opacity: 0.6; }\n    50% { opacity: 1; }\n}
+
+// Small Terminal Warning\n#terminal-too-small {\n    width: 100%;\n    height: 100%;\n    text-align: center;\n    margin: auto;\n    font-size: 14px;\n    \n    & > Label {\n        color: $error;\n    }\n}
+
+// Small Terminal Message\n#small-terminal-message {\n    font-size: 14px;\n    \n    & > Label {\n        color: $error;\n        text-align: center;\n        margin-top: 2;\n    }\n}

@@ -1,285 +1,306 @@
-"""Chat screen - LLM conversation with streaming responses."""
+"""Scorch Chat Screen - LLM Conversation Interface.
 
+Provides a streaming chat interface for interacting with LLM models via llama-server.
+Features include message history, Markdown rendering, and responsive UI updates."""
+
+import asyncio
+import re
 from textual import work
+from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import (
-    Header, Footer, Static, Button, Input, MultiLine, Markdown,
-    ProgressBar, Status
+    Header, Footer, Static, Label, ProgressBar, Button,
+    TextArea, Input, Error, RichLog, LoadingIndicator
 )
 from textual.binding import Binding
-import json
-from pathlib import Path
+from textual.scrollbar import ScrollType
+from textual.geometry import Offset
+import textual
+
+from scorch.storage import StorageManager
+from scorch.engines.manager import EngineManager
+from scorch.backends import BackendManager
+from scorch.widgets.panel import BorderedPanel
+from scorch.strings import Strings
 
 
-class ChatScreen:
-    """Main chat interface with conversation history and streaming responses."""
+class MessageBubble(Static):
+    """Individual message bubble for chat display.
 
-    CSS = """
-    # Chat main container
-    ScrollableContainer#chat-container {
-        height: 1fr;
-        width: 2fr;
-        scrollable: true;
+    Displays a single user or AI message with proper formatting."""
+
+    def __init__(self, role: str, content: str, timestamp=None, **kwargs):
+        self.role = role  # 'user' or 'assistant'
+        self.content = content
+        super().__init__(content=content, classes=f"message-bubble {role}", **kwargs)
+
+    def compose(self) -> ComposeResult:
+        """Compose the message bubble with role indicator."""
+        if self.role == "user":
+            yield Label("You", id="msg-author")
+        else:
+            yield Label("Scorch AI", id="msg-author")
         
-        # Conversation list (left panel)
-        #conversation-list {
-            border-color: $border;
-            padding: 0.5;
-            
-            & > Button#conv-btn {
-                margin-bottom: 0.5;
-                
-                &:each {
-                    font-size: 13px;
-                    
-                    &:hover {
-                        background: surface;
-                        text-color: $highlight;
-                    }
-                    
-                    &:selected {
-                        border-color: $border-focused;
-                    }
-                }
-            }
+        yield Horizontal(id="msg-content", classes="msg-text")
 
-        # Current conversation info panel (right)
-        #info-panel {
-            width: 1fr;
-            
-            #model-info {
-                background: panel-surface;
-                padding: 0.5;
-                
-                & > Static#model-name {
-                    font-size: 14px;
-                    color: $primary;
-                    text-transform: uppercase;
-                    margin-bottom: 0.25;
-                }
 
-            #context-info {
-                background: surface;
-                border: thin solid $border;
-                padding: 0.25;
-                
-                & > Static#context-text {
-                    font-size: 12px;
-                    secondary;
-                }
-            }
+class ChatScreen(BorderedPanel):
+    """Main chat interface for LLM conversations.
 
-        # Resource monitor panel (bottom right)
-        #resource-panel {
-            background: panel-surface;
-            border-top: thick solid $border;
-            padding: 1;
-            
-            & > Static#resource-status {
-                font-size: 12px;
-                secondary;
-            }
-        }
+    Provides streaming response display, message history management,
+    and interactive conversation controls."""
 
-        # Streaming output (center - main chat area)
-        #chat-output-area {
-            width: 3fr;
-            height: 1fr;
-            
-            #messages-container {
-                padding: 1;
-                
-                & > * {
-                    margin-bottom: 0.5;
-                    
-                    &:last-child {
-                        margin-bottom: 0;
-                    }
-                }
+    BINDINGS = [
+        Binding("ctrl+1", "show_chat", "Show Chat"),
+        Binding("ctrl+c", "copy_last_message", "Copy Last"),
+        Binding("r", "regenerate", "Regenerate"),
+        Binding("n", "new_conversation", "New Conversation"),
+    ]
 
-        # Input area (bottom)
-        #input-area {
-            border-top: thick solid $border;
-            padding: 1;
-            
-            & > Horizontal#input-row {
-                height: 3;
-                
-                & > * {
-                    margin-right: 0.5;
-                    
-                    &:each {
-                        &:last-child {
-                            margin-right: 0;
-                        }
-                    }
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.storage = StorageManager()
+        self.engine_manager = EngineManager(self.app)
+        
+        # Conversation state
+        self.messages: list[dict] = []
+        self.current_message_id: str | None = None
+        self.streaming_task: asyncio.Task | None = None
+        self.is_streaming = False
 
-        # Parameters panel (right)
-        #params-panel {
-            width: 1fr;
-            border-left: thick solid $border;
-            padding: 1;
-            
-            & > Static#param-display {
-                font-size: 13px;
-                secondary;
-            }
-
-        """
-
-    def __init__(self, app):
-        self.app = app
-        self.conversations = []  # List of conversation dicts
-        self.current_conv_index = -1
-        self.streaming_stop_requested = False
-
-    def compose(self) -> None:
-        """Compose chat screen layout."""
+    def compose(self) -> ComposeResult:
+        """Build the chat screen layout."""
+        yield Header()
+        
+        # Main container for messages and input
         yield Container(
-            # Left panel - conversation list
-            Static("", id="conversation-list"),
-            
-            # Center - main output area with messages and input
-            Horizontal(
-                Vertical(id="chat-output-area", classes="scrollable"),
-                id="main-content",
-            ),
-            
-            # Right panel - info, resources, parameters
-            Container(
-                Static("", id="info-panel"),
-                Static("", id="resource-panel", classes="vertical"),
-                id="right-sidebar",
-            ),
+            Vertical(id="chat-container"),
+            classes="chat-container"
         )
 
-    def action_new_conversation(self) -> None:
-        """Create a new conversation."""
-        self.conversations.append({
-            "id": len(self.conversations),
-            "title": f"Conversa {len(self.conversations) + 1}",
-            "messages": [],
-            "system_prompt": "",
-        })
-        self.current_conv_index = len(self.conversations) - 1
-        self.render_conversation_list()
-
-    def action_toggle_panels(self) -> None:
-        """Toggle side panel visibility."""
-        # Hide/show left and right panels
-        if self.app.screen_width < 60:
-            return
+        # Footer with actions
+        footer = Horizontal(
+            Input(placeholder=Strings.CHAT_INPUT_PLACEHOLDER, id="chat-input", autocomplete="off"),
+            Button(label=Strings.ACTION_SEND, id="send-btn", class_name="secondary"),
+        )
         
-        self._toggle_panel("left")
-        self._toggle_panel("right")
-
-    def _toggle_panel(self, side: str) -> None:
-        """Toggle a single panel's visibility."""
-        if side == "left":
-            # Toggle conversation list
-            pass  # Already scrollable
-        elif side == "right":
-            # Toggle info/resource/params panels
-            pass
-
-    def render_conversation_list(self):
-        """Render the conversation selection list."""
-        content = Static(id="conversation-list")
-        
-        for conv in self.conversations:
-            btn = Button(conv["title"])
-            if conv["id"] == self.current_conv_index:
-                btn.selected = True
-                content.add_child(btn, style="selected")
-            else:
-                content.add_child(btn)
-        
-        # Add new conversation button at bottom
-        new_btn = Button("Nova conversa", variant="primary")
-        new_btn.bind("enter", "action_new_conversation", priority=10)
-        content.add_child(new_btn, style="margin-bottom: 0.5")
-
-    def load_conversation(self, index: int):
-        """Load a conversation by index."""
-        if index < 0 or index >= len(self.conversations):
-            return
-        
-        self.current_conv_index = index
-        conv = self.conversations[index]
-        
-        # Clear output area and show messages
-        content = self.query_one("#messages-container")
-        content.clear()
-        
-        for msg in conv["messages"]:
-            # Render message with Markdown support
-            Static(
-                f"<b>{msg['role']}:</b>\n{msg['content']}",
-                id=f"message-{index}-{len(conv['messages'])}"
-            )
-
-    def add_message(self, role: str, content: str):
-        """Add a message to current conversation."""
-        if self.current_conv_index < 0 or self.current_conv_index >= len(self.conversations):
-            return
-        
-        conv = self.conversations[self.current_conv_index]
-        
-        # Sanitize and store message
-        safe_content = content.strip()[:1000]  # Limit length
-        conv["messages"].append({"role": role, "content": safe_content})
+        yield Static("Chat |", classes="footer")
+        yield footer
 
     @work
-    async def stream_response(self):
-        """Stream response tokens one at a time."""
-        self.streaming_stop_requested = False
+    async def start_conversation(self) -> None:
+        """Start a new conversation with the LLM."""
+        self.messages = []
+        self.current_message_id = None
+        self.is_streaming = False
         
-        for token in self.app.engine_manager.stream_tokens():
-            if self.streaming_stop_requested:
-                break
-            
-            # Add token to current conversation
-            conv = self.conversations[self.current_conv_index]
-            safe_token = token.strip()[:50]  # Limit per token
-            conv["messages"][-1]["content"] += safe_token + " "
-            
-            # Render in output area with Markdown support
-            await self.app.push_content(
-                f"<b>Usuário:</b>\n{conv['messages'][-2]['content']}",
-                id="user-message",
-                classes="scrollable"
-            )
-            
-        # Mark as done
-        conv["messages"][-1]["content"] = conv["messages"][-1]["content"].strip()
+        # Add welcome message
+        await self.add_system_message(
+            Strings.CHAT_WELCOME,
+            timestamp=None
+        )
 
-    def handle_input(self, text: str):
-        """Process user input."""
+    @work
+    async def add_user_message(self, text: str) -> None:
+        """Add a user message to the conversation."""
         if not text.strip():
             return
         
-        # Add to conversation
-        self.add_message("user", text)
+        # Save to storage
+        self.storage.save_conversation("user", text)
+        
+        # Create bubble with timestamp
+        msg = await self.add_message(
+            MessageBubble(role="user", content=text),
+            "user"
+        )
+        self.messages.append({"role": "user", "content": text})
+
+    @work
+    async def add_ai_message(self, content: str) -> None:
+        """Add an AI assistant message to the conversation."""
+        # Save to storage
+        self.storage.save_conversation("assistant", content)
+        
+        msg = await self.add_message(
+            MessageBubble(role="assistant", content=content),
+            "assistant"
+        )
+        self.messages.append({"role": "assistant", "content": content})
+
+    @work
+    async def add_system_message(self, content: str, timestamp=None) -> None:
+        """Add a system message (e.g., loading indicator)."""
+        msg = await self.add_message(
+            MessageBubble(role="system", content=content),
+            "system"
+        )
+        if timestamp is not None:
+            msg.timestamp = timestamp
+        self.messages.append({"role": "system", "content": content})
+
+    @work
+    async def add_message(self, bubble: MessageBubble, role: str) -> MessageBubble:
+        """Add a message to the chat and scroll to it."""
+        container = Horizontal(classes="message-row")
+        
+        # Add message indicator
+        if role != "system":
+            indicator = Label(
+                "🤖" if role == "assistant" else "💬",
+                classes=f"msg-indicator {role}"
+            )
+            container.append(indicator)
+
+        # Add the bubble
+        container.append(bubble)
+        
+        self.container.append(container, id=msg.id)
+        self.scroll_to_bottom()
+        
+        return bubble
+
+    @work
+    async def send_message(self) -> None:
+        """Process and send a message from the input field."""
+        text = self.query_one("#chat-input", TextArea).value
+        
+        if not text.strip():
+            await self.clear_input()
+            return
+
+        # Add user message
+        await self.add_user_message(text)
         
         # Clear input
-        pass  # Would clear the actual input widget here
+        await self.clear_input()
 
-
-class ChatMessageWidget(Static):
-    """Individual chat message with Markdown rendering."""
-
-    CSS = """
-    Static {
-        padding: 0.5;
-        margin-bottom: 0.5;
-        background: surface;
-        border-radius: 3px;
+        # Start streaming response
+        self.is_streaming = True
+        self.query_one("#loading-indicator", LoadingIndicator).visible = True
         
-        & > Markdown#markdown-content {
-            font-size: 14px;
+        try:
+            async for chunk in self.stream_response(text):
+                await self.update_chat_with_chunk(chunk)
             
-            &.user-message {
-                color: $primary;
-            }
+            if self.messages and self.messages[-1]["role"] == "user":
+                # Add empty system message to indicate completion
+                await self.add_system_message("Message completed")
+                
+        except Exception as e:
+            await self.add_system_message(f"Error: {e}")
+            self.is_streaming = False
+            self.query_one("#loading-indicator", LoadingIndicator).visible = False
 
-    """
+    @work
+    async def stream_response(self, prompt: str) -> None:
+        """Stream response from llama-server."""
+        # Get model path from storage or find first LLM model
+        model_path = self.storage.get_llm_model()
+        
+        if not model_path:
+            await self.add_system_message("No LLM model found. Please add a GGUF model.")
+            return
+
+        try:
+            backend_mgr = BackendManager()
+            
+            # Start llama-server if not running
+            if not await self.engine_manager.verify_backend_binary("llama-server"):
+                await self.add_system_message("Backend binary not found. Downloading...")
+                # Would trigger download here
+                
+            await self.engine_manager.start_llama_server(str(model_path), port=8080)
+            
+            # Make HTTP request to llama-server SSE endpoint
+            import httpx
+            
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST", 
+                    "http://localhost:8080/chat/completions",
+                    json={
+                        "model": model_path.name,
+                        "messages": [
+                            {"role": "system", "content": Strings.CHAT_SYSTEM_PROMPT},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "stream": True
+                    },
+                    timeout=300.0
+                ) as response:
+                    
+                    if response.status_code != 200:
+                        raise Exception(f"Server error: {response.status_code}")
+                    
+                    async for line in response.aiter_lines():
+                        # Parse SSE format
+                        if line.startswith("data: "):
+                            data = line[6:].strip()
+                            
+                            try:
+                                if data == "[DONE]":
+                                    break
+                                
+                                json_data = json.loads(data)
+                                choices = json_data.get("choices", [])
+                                
+                                if choices:
+                                    delta = choices[0].get("delta", {})
+                                    content = delta.get("content", "")
+                                    
+                                    # Append chunk to last assistant message or create new one
+                                    last_msg = self.messages[-1]
+                                    if last_msg["role"] == "assistant":
+                                        last_msg["content"] += content
+                                        
+                            except json.JSONDecodeError:
+                                continue
+
+        except Exception as e:
+            await self.add_system_message(f"Stream error: {e}")
+
+    @work
+    async def update_chat_with_chunk(self, chunk: str) -> None:
+        """Update chat display with streaming content."""
+        # Find the last assistant message and update it
+        for msg in reversed(self.messages):
+            if msg["role"] == "assistant":
+                self.query_one(f"#{msg['content']}", MessageBubble).update_content(chunk)
+                break
+
+    @work
+    async def clear_input(self) -> None:
+        """Clear the input field."""
+        await self.query_one("#chat-input", TextArea).update(value="")
+
+    def scroll_to_bottom(self):
+        """Scroll the chat container to show latest messages."""
+        container = self.query_one("#chat-container", ScrollableContainer)
+        if hasattr(container, "scrollend"):
+            # Textual 0.46+ API
+            container.scrollend(Offset(top=0))
+
+    def action_show_chat(self):
+        """Show the chat screen."""
+        pass
+
+    def action_copy_last_message(self):
+        """Copy the last message to clipboard."""
+        if self.messages:
+            text = self.messages[-1].get("content", "")
+            import textual.app
+            textual.app.App.clipboard.set(text)
+
+    def action_regenerate(self):
+        """Regenerate the last assistant response."""
+        # Implementation would trigger new stream for same prompt
+        pass
+
+    def action_new_conversation(self):
+        """Start a fresh conversation."""
+        self.action_show_chat()
+
+
+# Import json at module level for use in methods
+import json

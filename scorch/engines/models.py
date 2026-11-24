@@ -1,138 +1,190 @@
-"""Models management - download, import, list installed models."""
+# Scorch Model Manager - LLM and Stable Diffusion Model Management
+"""Manages LLM GGUF models and Stable Diffusion checkpoints.
 
+Provides methods to:
+- Scan for available models in designated directories
+- Download models from Hugging Face or other sources
+- Verify model integrity before use
+- Display model information in the UI"""
+
+import os
 from pathlib import Path
+from typing import List, Dict, Optional
 
 
 class ModelManager:
-    """Manages model files (SD checkpoints, LLM GGUF)."""
+    """Manages LLM and Stable Diffusion model files.
+    
+    This class handles scanning directories for supported models,
+    downloading new ones, and providing model metadata."""
 
     def __init__(self):
-        self.models = []  # List of installed models with metadata
-        self.active_model = None
-        self.catalog_url = "https://huggingface.co"
+        # Default directory paths
+        self.llm_model_dir = Path("llm-models")
+        self.sd_model_dir = Path("models")
+        
+        # Supported file extensions
+        self.llm_extensions = ["*.gguf", "*.bin"]
+        self.sd_extensions = ["*.safetensors", "*.ckpt", "*.pth"]
 
     @property
-    def sd_dir(self) -> Path:
-        return Path("models")
-
-    @property
-    def llm_models_dir(self) -> Path:
-        return Path("llm-models")
-
-    def list_installed_sd_models(self):
-        """List all SD checkpoint files in models/."""
+    def available_llm_models(self) -> List[Path]:
+        """List all available LLM model files in the model directory.
+        
+        Returns:
+            Sorted list of Path objects for .gguf and .bin files
+        """
         models = []
-        sd_dir = self.sd_dir
         
-        for ext in ["*.safetensors", "*.ckpt"]:
-            for model_file in sd_dir.glob(ext):
-                models.append({
-                    "path": str(model_file),
-                    "filename": model_file.name,
-                    "size_mb": model_file.stat().st_size / (1024 * 1024) if model_file.exists() else 0,
-                    "type": ext.replace(".", ""),
-                })
-        
-        return models
-
-    def list_installed_llm_models(self):
-        """List all LLM GGUF files in llm-models/."""
-        models = []
-        llm_dir = self.llm_models_dir
-        
-        for model_file in llm_dir.glob("*.gguf"):
-            models.append({
-                "path": str(model_file),
-                "filename": model_file.name,
-                "size_mb": model_file.stat().st_size / (1024 * 1024) if model_file.exists() else 0,
-                "type": "gguf",
-            })
-        
-        return models
-
-    def download_model(self, url: str, output_path: Path) -> tuple[bool, Optional[str]]:
-        """Download a model from URL with progress."""
-        try:
-            import httpx
+        if self.llm_model_dir.exists():
+            # Check llm-models directory
+            for ext in ["*.gguf", "*.bin"]:
+                models.extend(self.llm_model_dir.glob(ext))
             
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, stream=True)
-                if not response.is_success:
-                    return False, f"HTTP {response.status_code}"
-                
-                total_size = int(response.headers.get("content-length", 0))
-                downloaded = 0
-                
-                with open(output_path, "wb") as f:
-                    for chunk in response.iter_bytes(chunk_size=8192):
-                        if not chunk:
-                            continue
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if total_size > 0:
-                            percent = (downloaded / total_size) * 100
-                            print(f"Downloading... {percent:.1f}% ({model_file.name})")
-                
-                return True, None
+            # Sort by size (largest first - full models before quantized)
+            sorted_models = sorted(models, key=lambda p: p.stat().st_size, reverse=True)
+        else:
+            print(f"LLM model directory not found: {self.llm_model_dir}")
         
+        return list(sorted_models)
+
+    @property
+    def available_sd_models(self) -> List[Path]:
+        """List all available Stable Diffusion checkpoint files.
+        
+        Returns:
+            Sorted list of Path objects for .safetensors and .ckpt files
+        """
+        models = []
+        
+        if self.sd_model_dir.exists():
+            # Check models directory
+            for ext in ["*.safetensors", "*.ckpt"]:
+                models.extend(self.sd_model_dir.glob(ext))
+            
+            # Sort by size (largest first)
+            sorted_models = sorted(models, key=lambda p: p.stat().st_size, reverse=True)
+        else:
+            print(f"Stable Diffusion model directory not found: {self.sd_model_dir}")
+        
+        return list(sorted_models)
+
+    def get_model_info(self, model_path: Path) -> Optional[Dict]:
+        """Get detailed information about a specific model file.
+        
+        Args:
+            model_path: Path to the model file
+            
+        Returns:
+            Dictionary with model metadata or None if info unavailable
+        """
+        try:
+            stat_info = model_path.stat()
+            
+            # Detect model type by extension
+            is_llm = any(model_path.suffix in self.llm_extensions for _ in [])
+            is_sd = any(model_path.suffix in self.sd_extensions for _ in [])
+            
+            return {
+                "path": str(model_path),
+                "filename": model_path.name,
+                "size_bytes": stat_info.st_size,
+                "size_human": format_size(stat_info.st_size),
+                "is_llm_model": is_llm,
+                "is_sd_checkpoint": is_sd,
+            }
+            
         except Exception as e:
-            return False, str(e)
+            print(f"Error getting model info for {model_path}: {e}")
+            return None
 
-    def verify_model_hash(self, filepath: Path) -> bool:
-        """Verify model file SHA256 hash."""
-        import hashlib
+    def download_model(self, url: str, output_dir: Path) -> bool:
+        """Download a model file from URL.
         
-        try:
-            h = hashlib.sha256()
-            with open(filepath, "rb") as f:
-                while chunk := f.read(8192):
-                    h.update(chunk)
+        Args:
+            url: Remote URL to download the model from
+            output_dir: Directory where to save the downloaded model
             
-            return True  # Hash verification would check against catalog
-        except Exception:
+        Returns:
+            True if download completed successfully, False otherwise
+        
+        Note:
+            Full implementation would use aiohttp or requests library
+            with progress tracking and resume capability.
+        """
+        try:
+            import urllib.request as urlopen  # Python 2 compatible
+            
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            filename = url.split("/")[-1] if "/" in url else "model.bin"
+            model_path = output_dir / filename
+            
+            print(f"Downloading {filename}...")
+            print(f"  URL: {url}")
+            
+            with urlopen.urlopen(url) as response, open(model_path, 'wb') as f:
+                while True:
+                    chunk = response.read(8192)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    
+            print(f"Downloaded to: {model_path}")
+            
+            # Verify file size (basic integrity check)
+            model_size = model_path.stat().st_size
+            if model_size < 1_000_000:  # At least 1MB for valid models
+                print(f"Warning: Model seems too small ({model_size} bytes)")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error downloading model from {url}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
-    def import_model(self, local_path: str):
-        """Import a model from local path."""
-        model_file = Path(local_path)
-        
-        if not model_file.exists():
-            return {"success": False, "error": "File not found"}
-        
-        # Copy to appropriate directory
-        dest_dir = self.sd_dir if "sd" in str(model_file.name).lower() else self.llm_models_dir
-        
-        import shutil
-        try:
-            dest_file = dest_dir / model_file.name
-            
-            if dest_file.exists():
-                print(f"Model already exists at {dest_file}, overwriting...")
-            
-            shutil.copy2(str(model_file), str(dest_file))
-            
-            return {"success": True, "path": str(dest_file)}
-        
-        except Exception as e:
-            return {"success": False, "error": str(e)}
 
-    def remove_model(self, model_path: Path):
-        """Remove a model file."""
-        import shutil
+def format_size(size_bytes: int) -> str:
+    """Format file size in human-readable format.
+    
+    Args:
+        size_bytes: Size in bytes
         
-        try:
-            if model_path.exists():
-                # Checkpoint files are large - use shutil.rmtree for dirs, unlink for files
-                if model_path.is_dir():
-                    shutil.rmtree(model_path)
-                else:
-                    model_path.unlink()
-            
-            return {"success": True}
-        
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+    Returns:
+        Human-readable string (e.g., "2.5 GB", "1 MB")
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if abs(size_bytes) < 1024.0:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024.0
+    
+    return f"{size_bytes:.1f} PB"
 
-    def set_active_model(self, model_path: Path):
-        """Set the currently active model."""
-        self.active_model = str(model_path)
+
+def scan_models() -> Dict[str, List[Path]]:
+    """Scan for models in both LLM and Stable Diffusion directories.
+    
+    Returns:
+            Dictionary with two keys: 'llm' and 'sd', each containing list of model paths
+    
+    Example:
+        >>> llm_models, sd_models = scan_models()
+        >>> print(f"Found {len(llm_models)} LLM models")
+        >>> print(f"Found {len(sd_models)} SD checkpoints")
+    """
+    manager = ModelManager()
+    
+    return {
+        "llm": manager.available_llm_models,
+        "sd": manager.available_sd_models,
+    }
+
+
+# Export main classes and functions for use in other modules
+__all__ = [
+    "ModelManager",
+    "format_size",
+    "scan_models",
+]

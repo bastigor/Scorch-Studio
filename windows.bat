@@ -16,8 +16,12 @@ if "%~2"=="vulkan" set BACKEND=vulkan
 if "%~2"=="cpu" set BACKEND=cpu
 if not defined BACKEND set BACKEND=cpu
 
-REM Download Python portable binary if needed
+echo ========================================
+echo Scorch - Portable AI Studio
+echo ========================================
 echo.
+
+REM Download Python portable binary if needed
 echo [1/5] Checking for portable Python...
 
 set PYTHON_EXISTS=0
@@ -30,27 +34,28 @@ for /f "delims=" %%i in ('python --version 2^>nul') do (
 
 if not defined PYTHON_EXISTS (
     echo Downloading portable Python binary...
-    set DOWNLOAD_URL=https://github.com/João-Pedro/python-build-standalone/releases/download/v0.29.0/python-build-standalone-win-x86_64.zip
-    echo Downloading: %DOWNLOAD_URL%
     
-    curl -L -o "python-portable-win-x86_64.zip" "%DOWNLOAD_URL%"
+    REM Use Windows download for better compatibility
+    curl -L -o "python-portable-win-x86_64.zip" "https://github.com/indygreg/python-build-standalone/releases/download/20231227/python-3.12.9t-cp312-cp312-win_x86_64.exe"
     
     if errorlevel 1 (
         echo Failed to download portable Python. Please install Python manually and skip this step.
     ) else (
-        echo Extracting...
-        tar xf python-portable-win-x86_64.zip /python.exe
+        REM Extract using PowerShell for better control
+        powershell -Command "Start-Process powershell -ArgumentList '-NoExit', '-Command', 'Expand-Archive -DestinationPath . -SourcePath python-portable-win-x86_64.zip; Remove-Item python-portable-win-x86_64.zip'"
         
-        REM Find Python executable path
+        echo Extracting...
+        
+        REM Find Python executable path in extracted directory
         for %%a in ("python.exe") do (
-            set PYTHON_PATH="%%~f"
+            set PYTHON_PATH="%%~fa"
         )
         
         if exist "%PYTHON_PATH%" (
             echo Portable Python installed at: %PYTHON_PATH%
             
-            REM Create virtual environment in runtime/
-            set VENV_DIR=runtimeenv
+            REM Create runtime virtual environment
+            set VENV_DIR=runtime\env
             
             if not exist "%VENV_DIR%" (
                 echo Creating virtual environment...
@@ -106,4 +111,12 @@ if defined RESET (
 )
 
 echo.
-echo Scorch is ready! Run: python scorchpp.py
+echo ========================================
+echo Scorch is ready!
+echo ========================================
+echo Run: python scorch\app.py
+echo Or use Ctrl+1 to switch to Chat screen
+echo Or use Ctrl+2 to generate images
+echo.
+echo Press Ctrl+B to toggle panels, Esc to interrupt generation
+echo F1 for help, Ctrl+Q to quit

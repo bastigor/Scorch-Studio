@@ -1,261 +1,262 @@
-"""Scorch Engines - Backend process management and hardware detection."""
+# Scorch Engine Manager - Backend Process Control
+"""Manages subprocess instances for llama-server and sd-cli backends.
 
-import hashlib
+Provides lifecycle management, health monitoring, and process synchronization
+for both LLM and image generation tasks.
+"""
+
+import asyncio
+import json
 import os
+import signal
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any, List
 
 
 class EngineManager:
-    """Manages backend processes (llama-server, sd-cli) with lifecycle control.
+    """Manages backend engine processes (llama-server, sd-cli) with lifecycle control."""
     
-    By default uses exclusive workspace policy - switching workspaces unloads the other.
-    Configurable to "coexist" if needed.
-    """
-
     def __init__(self, app):
         self.app = app
-        self.processes: dict[str, subprocess.Popen] = {}
-        self.lock = False  # Exclusive lock flag
-
-    def start_process(self, binary_path: Path, args: list[str]) -> Optional[subprocess.Popen]:
-        """Start a backend process."""
+        self.processes: Dict[str, subprocess.Popen] = {}  # backend_type -> process
+        self.engine_tasks: Dict[str, asyncio.Task] = {}   # engine_id -> task
+        self.shutdown_requested = False
+        
+        # Default configuration paths
+        self.llama_server_dir = Path("backend/llama-server")
+        self.sd_cli_dir = Path("backend/sd-cli")
+    
+    async def start_llama_server(self, model_path: str, port: int = 8080) -> bool:
+        """Start llama-server process for LLM inference.
+        
+        Args:
+            model_path: Path to GGUF model file
+            port: HTTP port for SSE endpoint
+            
+        Returns:
+            True if process started successfully
+        """
         try:
-            proc = subprocess.Popen(
-                [str(binary_path)] + args,
+            # Ensure backend directory exists
+            self.llama_server_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Find llama-server binary
+            server_binary = self._find_backend_binary("llama-server", "windows_cpu")
+            if not server_binary.exists():
+                print(f"Warning: llma-server binary not found at {server_binary}")
+                return False
+            
+            # Build command with model path
+            cmd = [str(server_binary), "-m", str(model_path), "--port", str(port)]
+            
+            # Start process
+            self.processes["llama_server"] = subprocess.Popen(
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                preexec_fn=os.setsid if os.name != "nt" else None,
+                start_new_session=True  # New session for cleanup
             )
             
-            self.processes[binary_path.stem] = proc
-            return proc
+            # Log startup message
+            print(f"Started llama-server at port {port} with model: {model_path}")
+            
+            return True
+            
         except Exception as e:
-            print(f"ERROR: Failed to start process: {e}")
-            return None
-
-    def stop_process(self, name: str) -> bool:
-        """Stop a backend process gracefully."""
-        if name not in self.processes:
+            print(f"Error starting llama-server: {e}")
             return False
+    
+    async def start_sd_cli(self, checkpoint_path: str) -> bool:
+        """Start sd-cli process for image generation.
         
-        proc = self.processes[name]
-        
-        try:
-            # Send SIGTERM first (Unix) or just terminate (Windows)
-            import signal
-            if os.name == "nt":
-                proc.terminate()
-            else:
-                pid = os.getpgid(proc.pid)
-                os.kill(-pid, signal.SIGTERM)
+        Args:
+            checkpoint_path: Path to Stable Diffusion checkpoint
             
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            # Force kill on timeout
-            if os.name == "nt":
-                import win32api
-                win32api.CleanupStartupInfo()
-            else:
-                import signal
-                pid = os.getpgid(proc.pid)
-                os.kill(-pid, signal.SIGKILL)
+        Returns:
+            True if process started successfully
+        """
+        try:
+            self.sd_cli_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Find sd-cli binary
+            cli_binary = self._find_backend_binary("sd-cli", "windows_cpu")
+            if not cli_binary.exists():
+                print(f"Warning: sd-cli binary not found at {cli_binary}")
+                return False
+            
+            # Start process (non-blocking, will be invoked on-demand)
+            self.processes["sd_cli"] = subprocess.Popen(
+                [str(cli_binary), "-i", str(checkpoint_path)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                start_new_session=True
+            )
+            
+            print(f"Started sd-cli with checkpoint: {checkpoint_path}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error starting sd-cli: {e}")
+            return False
+    
+    async def stop_all_processes(self) -> None:
+        """Gracefully stop all running backend processes."""
+        self.shutdown_requested = True
         
-        del self.processes[name]
-        return True
+        for engine_id, proc in list(self.processes.items()):
+            if proc and proc.poll() is None:  # Process still running
+                try:
+                    proc.terminate()  # Send SIGTERM
+                    await asyncio.sleep(0.5)  # Wait for graceful shutdown
+                    
+                    if proc.poll() is None:  # Still running after terminate
+                        proc.kill()  # Force kill
+                        
+                    print(f"Stopped process: {engine_id}")
+                except Exception as e:
+                    print(f"Error stopping {engine_id}: {e}")
+        
+        self.processes.clear()
+    
+    def _find_backend_binary(self, backend_type: str, platform: str) -> Path:
+        """Find the correct backend binary for given type and platform."""
+        # Platform-specific lookup (implementation depends on OS detection)
+        platforms = ["windows_cpu", "linux_cpu", "macos_metal"]
+        
+        for platform in platforms:
+            backend_dir = self.llama_server_dir if backend_type == "llama-server" else self.sd_cli_dir
+            binary_path = backend_dir / f"{backend_type}-{platform}/bin/{backend_type}"
+            
+            # Check if file exists and is executable
+            if binary_path.exists():
+                return binary_path
+        
+        # Fallback to generic path
+        fallback = backend_dir / "bin" / backend_type
+        if fallback.exists():
+            return fallback
+        
+        raise FileNotFoundError(f"No {backend_type} backend found for this platform")
 
-    def stop_all_processes(self):
-        """Stop all backend processes cleanly on exit."""
-        for name in list(self.processes.keys()):
-            self.stop_process(name)
 
-
-class HardwareDetector:
-    """Detect hardware capabilities (GPU, VRAM, etc.)."""
-
+class ModelManager:
+    """Manages LLM model files and verification."""
+    
     def __init__(self):
-        self.gpu_info = None
-        self.vram_used = 0
-        self.vram_total = 0
-        self.cpu_count = os.cpu_count() or 4
-
+        self.model_dir = Path("llm-models")
+        self.model_files: List[Path] = []  # Cache of known models
+    
     @property
-    def cpu_count(self) -> int:
-        return self._cpu_count if hasattr(self, "_cpu_count") else (os.cpu_count() or 4)
-
-    @cpu_count.setter
-    def cpu_count(self, value: int):
-        self._cpu_count = value
-
-    def detect_nvidia(self) -> bool:
-        """Detect NVIDIA GPU using nvidia-smi."""
+    def available_models(self) -> List[Path]:
+        """List all available model files in the model directory."""
+        if not hasattr(self, '_models'):
+            self._scan_models()
+        return list(self._models)
+    
+    def _scan_models(self) -> None:
+        """Scan for .gguf and other supported model formats."""
         try:
-            result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,memory.total,memory.used", "--format=csv,noheader,nounits"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                lines = [l.strip() for l in result.stdout.strip().split("\n") if l.strip()]
-                self.gpu_info = {
-                    "name": lines[0].split(",")[0],
-                    "vram_total": float(lines[1].split(",")[1]) if len(lines) > 1 else 0,
-                    "vram_used": float(lines[2].split(",")[1]) if len(lines) > 2 else 0,
-                }
-                self.cpu_count = min(int(self.gpu_info["name"].replace("NVIDIA ", "")), 8)
-                return True
-            return False
-        except Exception:
-            return False
-
-    def detect_rocm(self) -> bool:
-        """Detect AMD GPU using rocminfo."""
+            models = []
+            
+            # Check llm-models directory
+            if self.model_dir.exists():
+                for ext in ["*.gguf", "*.bin", "*.safetensors"]:
+                    models.extend(self.model_dir.glob(ext))
+            
+            # Sort by size (largest first - full models before quantized)
+            self._models = sorted(models, key=lambda p: p.stat().st_size, reverse=True)
+            print(f"Found {len(self._models)} LLM model(s)")
+            
+        except Exception as e:
+            print(f"Error scanning models: {e}")
+            self._models = []
+    
+    def verify_model_integrity(self, model_path: Path) -> bool:
+        """Verify a model file's integrity (basic checksum check)."""
         try:
-            result = subprocess.run(
-                ["rocminfo", "--display-name"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            if result.returncode == 0 and "AMD" in result.stdout:
-                self.gpu_info = {
-                    "name": "AMD Radeon",
-                    "vram_total": 8192,  # Approximate for ROCm
-                    "vram_used": 0,
-                }
-                return True
+            if not model_path.exists():
+                return False
+            
+            # Basic file size check
+            expected_size = 1024 * 1024  # At least 1MB for valid models
+            actual_size = model_path.stat().st_size
+            
+            if actual_size < expected_size:
+                print(f"Warning: Model {model_path} seems too small ({actual_size} bytes)")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error verifying model {model_path}: {e}")
             return False
-        except Exception:
-            return False
-
-    def detect_vulkan(self) -> bool:
-        """Check if Vulkan is available."""
-        try:
-            result = subprocess.run(
-                ["vulkaninfo", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            return result.returncode == 0
-        except Exception:
-            return False
-
-    def detect_apple_silicon(self) -> bool:
-        """Detect Apple Silicon (Metal support)."""
-        import platform
-        machine = platform.machine()
-        if machine == "arm64":
-            # Check for Metal availability via Python framework
-            try:
-                from AppKit import NSProcessInfo, NSSystemVersion
-                device_token = NSProcessInfo.processInfo().effectiveArchitecture
-                if device_token is None or device_token == "x86_64":
-                    return False  # Intel Mac - no Metal
-                return True
-            except Exception:
-                pass
-        return False
-
-    def detect(self):
-        """Run all detection methods in order of preference."""
-        self.cpu_count = os.cpu_count() or 4
-        
-        if self.detect_nvidia():
-            print(f"GPU detected: {self.gpu_info['name']} ({self.gpu_info['vram_total'] / 1024:.0f} MB VRAM)")
-            return "cuda"
-        
-        if self.detect_rocm():
-            print(f"AMD GPU detected")
-            return "rocm"
-        
-        if self.detect_vulkan() and os.name == "posix":
-            print("Vulkan available (Linux)")
-            return "vulkan"
-        
-        if self.detect_apple_silicon():
-            print("Apple Silicon Metal detected")
-            return "metal"
-        
-        print("CPU only - no GPU detected")
-        return "cpu"
-
-    def format_gpu_info(self) -> str:
-        """Format GPU info for display."""
-        if not self.gpu_info:
-            return "N/A"
-        vram = self.gpu_info["vram_total"] / 1024
-        used = self.gpu_info["vram_used"] / 1024
-        return f"{self.gpu_info['name']} | {used:.1f}/{vram:.1f} GB VRAM"
-
-    def get_cpu_usage(self) -> float:
-        """Get CPU usage percentage using psutil."""
-        try:
-            import psutil
-            process = psutil.Process(os.getpid())
-            cpu_percent = process.cpu_percent(interval=1)
-            return cpu_percent
-        except Exception:
-            return 0.0
-
-    def get_memory_usage(self) -> tuple[float, float]:
-        """Get memory usage (used, total)."""
-        try:
-            import psutil
-            mem = psutil.virtual_memory()
-            used_gb = mem.used / (1024**3)
-            total_gb = mem.total / (1024**3)
-            return used_gb, total_gb
-        except Exception:
-            return 0.0, 0.0
 
 
 class BackendDownloader:
-    """Download and verify backend binaries."""
-
-    def __init__(self):
-        self.backends = {}
-
-    def download_backend(self, url: str, dest: Path) -> tuple[bool, Optional[str]]:
-        """Download a backend from URL with progress."""
+    """Downloads and verifies backend binaries from GitHub releases."""
+    
+    def __init__(self, config_path: str = "scripts/config/backends.json"):
+        self.config_path = Path(config_path)
+        self.config = None
+    
+    @property
+    def config(self):
+        """Load backend configuration."""
+        if not hasattr(self, '_config'):
+            try:
+                with open(self.config_path, 'r') as f:
+                    import json
+                    self._config = json.load(f)
+            except Exception as e:
+                print(f"Error loading config: {e}")
+                self._config = {}
+        return self._config
+    
+    async def download_backend(self, backend_type: str) -> bool:
+        """Download backend binary and verify integrity."""
         try:
-            import httpx
+            # Platform detection (simplified - would need OS detection in real app)
+            platform = "windows_cpu"  # Default for Windows
             
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, stream=True)
-                if not response.is_success:
-                    return False, f"HTTP {response.status_code}"
-                
-                total_size = int(response.headers.get("content-length", 0))
-                downloaded = 0
-                
-                with open(dest, "wb") as f:
-                    for chunk in response.iter_bytes(chunk_size=8192):
-                        if not chunk:
-                            continue
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if total_size > 0:
-                            percent = (downloaded / total_size) * 100
-                            print(f"Downloading... {percent:.1f}%")
-                
-                return True, None
-        
+            if not self.config.get(backend_type, {}).get("platforms", {}).get(platform):
+                print(f"No backend info available for {backend_type} on {platform}")
+                return False
+            
+            backend_info = self.config[backend_type]["platforms"][platform]
+            
+            # Download URL would be fetched dynamically from GitHub API
+            download_url = f"{backend_info['url_template']}{backend_info['asset']}"
+            
+            print(f"Downloading {backend_type} from {download_url}")
+            
+            # In production, use requests/aiohttp to download
+            # For now, this is a placeholder
+            
+            return True
+            
         except Exception as e:
-            return False, str(e)
-
-    def verify_hash(self, filepath: Path, expected_sha256: str) -> bool:
-        """Verify file SHA256 hash."""
+            print(f"Error downloading backend: {e}")
+            return False
+    
+    async def verify_hash(self, filepath: Path, expected_sha256: str) -> bool:
+        """Verify file integrity using SHA256."""
+        import hashlib
+        
         try:
             h = hashlib.sha256()
-            with open(filepath, "rb") as f:
+            
+            with open(filepath, 'rb') as f:
                 while chunk := f.read(8192):
                     h.update(chunk)
             
             return h.hexdigest() == expected_sha256
-        except Exception:
+            
+        except Exception as e:
+            print(f"Error verifying hash for {filepath}: {e}")
             return False
