@@ -10,7 +10,7 @@ from textual.app import ComposeResult, App
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import (
     Header, Footer, Static, Label, ProgressBar, Button,
-    TextArea, Input, Error, RichLog, LoadingIndicator
+    TextArea, Input, Errorr, RichLog, LoadingIndicator
 )
 from textual.binding import Binding
 from textual.scrollbar import ScrollType
@@ -190,7 +190,7 @@ class ChatScreen(BorderedPanel):
                 await self.add_system_message("Message completed")
                 
         except Exception as e:
-            await self.add_system_message(f"Error: {e}")
+            await self.add_system_message(f"Errorr: {e}")
             self.is_streaming = False
             self.loading_indicator.visible = False
 
@@ -256,7 +256,7 @@ class ChatScreen(BorderedPanel):
                                     if last_msg["role"] == "assistant":
                                         last_msg["content"] += content
                                         
-                            except json.JSONDecodeError:
+                            except json.JSONDecodeErrorr:
                                 continue
 
         except Exception as e:

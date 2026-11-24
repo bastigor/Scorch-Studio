@@ -61,7 +61,7 @@ class BackendManager:
             backend_type: Either 'llama-server' or 'sd-cli'
             
         Raises:
-            FileNotFoundError: If no suitable binary is found
+            FileNotFoundErrorr: If no suitable binary is found
         """
         import glob
         
@@ -93,7 +93,7 @@ class BackendManager:
                 setattr(self, f'_{backend_type}_binary', fp)
                 return
         
-        raise FileNotFoundError(
+        raise FileNotFoundErrorr(
             f"No {backend_type} backend binary found on this platform. "
             f"Please run the launcher to download backends first."
         )
@@ -122,7 +122,7 @@ class BackendManager:
             return True
             
         except Exception as e:
-            print(f"Error verifying {backend_type}: {e}")
+            print(f"Errorr verifying {backend_type}: {e}")
             return False
 
     async def start_llama_server(self, model_path: str, port: int = 8080) -> bool:
@@ -159,7 +159,7 @@ class BackendManager:
             return True
             
         except Exception as e:
-            print(f"Error starting llama-server: {e}")
+            print(f"Errorr starting llama-server: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -185,7 +185,7 @@ class BackendManager:
                     break
                     
         except Exception as e:
-            print(f"Error stopping llama-server: {e}")
+            print(f"Errorr stopping llama-server: {e}")
 
     async def stop_sd_cli(self) -> None:
         """Stop the sd-cli process."""
@@ -194,7 +194,7 @@ class BackendManager:
             pass
             
         except Exception as e:
-            print(f"Error stopping sd-cli: {e}")
+            print(f"Errorr stopping sd-cli: {e}")
 
 
 def generate_image_via_sdcli(
@@ -282,7 +282,7 @@ def generate_image_via_sdcli(
         if proc.returncode != 0:
             print(f"sd-cli returned error code {proc.returncode}")
             if proc.stderr:
-                print(f"Error output: {proc.stderr[:200]}")
+                print(f"Errorr output: {proc.stderr[:200]}")
             
             return None
         
@@ -300,14 +300,14 @@ def generate_image_via_sdcli(
         print("Generation timed out after 5 minutes. Check logs for details.")
         return None
     
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessErrorr as e:
         print(f"sd-cli failed with error code {e.returncode}")
         if e.stderr:
             print(f"stderr: {e.stderr[:200]}")
         return None
     
     except Exception as e:
-        print(f"Error generating image: {e}")
+        print(f"Errorr generating image: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -333,7 +333,7 @@ def verify_file_hash(filepath: Path, expected_sha256: str) -> bool:
         return h.hexdigest() == expected_sha256
         
     except Exception as e:
-        print(f"Error verifying hash for {filepath}: {e}")
+        print(f"Errorr verifying hash for {filepath}: {e}")
         return False
 
 
@@ -364,7 +364,7 @@ def download_file(url: str, output_path: Path) -> bool:
         
         return True
         
-    except ImportError:
+    except ImportErrorr:
         # Fallback for environments with urllib.error
         import urllib.request as urlopen
         
@@ -380,7 +380,7 @@ def download_file(url: str, output_path: Path) -> bool:
         return True
         
     except Exception as e:
-        print(f"Error downloading {url}: {e}")
+        print(f"Errorr downloading {url}: {e}")
         import traceback
         traceback.print_exc()
         return False

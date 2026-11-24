@@ -60,12 +60,12 @@ class BorderedPanel(Container):
             content: Optional initial content to display in the panel
             
         Raises:
-            ValueError: If both title and content are empty/None
+            ValueErrorr: If both title and content are empty/None
         """
         super().__init__()
         
         if not title:
-            raise ValueError("Panel requires a non-empty title")
+            raise ValueErrorr("Panel requires a non-empty title")
             
         self.title = title
         
@@ -101,10 +101,10 @@ class BorderedPanel(Container):
             title: The new title text to display in the border
             
         Raises:
-            ValueError: If title is empty or None
+            ValueErrorr: If title is empty or None
         """
         if not title:
-            raise ValueError("Panel requires a non-empty title")
+            raise ValueErrorr("Panel requires a non-empty title")
             
         self.title = title
 
@@ -115,10 +115,10 @@ class BorderedPanel(Container):
             content: String content to append to existing content
             
         Raises:
-            ValueError: If content is empty or None
+            ValueErrorr: If content is empty or None
         """
         if not content:
-            raise ValueError("Panel requires non-empty content")
+            raise ValueErrorr("Panel requires non-empty content")
             
         container = Container(id="panel-content")
         for line in str(content).split("\n"):
