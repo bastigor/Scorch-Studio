@@ -92,7 +92,7 @@ scorch/
 ├── app.py                         # Main application entry point
 ├── backends/                      # Backend binary management
 │   ├── __init__.py
-│   └── manager.py                 # llama-server, sd-cli, downloads
+│   └── manager.py                 # llama-server, sd-cli management
 ├── engines/                       # Model and inference management
 │   ├── __init__.py
 │   ├── manager.py                 # Engine orchestration
