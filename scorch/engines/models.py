@@ -8,6 +8,7 @@ Provides methods to:
 - Display model information in the UI"""
 
 import os
+import sys
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -82,8 +83,8 @@ class ModelManager:
             stat_info = model_path.stat()
             
             # Detect model type by extension
-            is_llm = any(model_path.suffix in self.llm_extensions for _ in [])
-            is_sd = any(model_path.suffix in self.sd_extensions for _ in [])
+            is_llm = any(model_path.suffix.lower().endswith(ext) for ext in self.llm_extensions)
+            is_sd = any(model_path.suffix.lower().endswith(ext) for ext in self.sd_extensions)
             
             return {
                 "path": str(model_path),
@@ -142,7 +143,7 @@ class ModelManager:
         except Exception as e:
             print(f"Error downloading model from {url}: {e}")
             import traceback
-            traceback.print_exc()
+            traceback.print_exc(file=sys.stderr)  # sys imported at top of file
             return False
 
 

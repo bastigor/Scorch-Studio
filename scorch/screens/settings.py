@@ -104,8 +104,8 @@ class SettingsScreen(Screen):
         
         @work
         async def show_save_confirmation():
-            await self.query_one("#settings-container", Container).append(
-                Static("Settings saved successfully!", id="save-success")
+            await self.query_one("#settings-container", Container).remove(
+                self.query_one("#save-success") if self.query_one("#save-success") else None
             )
             
         asyncio.create_task(show_save_confirmation())
@@ -115,15 +115,13 @@ class SettingsScreen(Screen):
         
         from scorch.app import ScorchApp
         
-        app = ScorchApp()
-        app.exit()
+        self.app.exit()
 
     def action_quit_app(self) -> None:
         """Quit the application."""
         from scorch.app import ScorchApp
         
-        app = ScorchApp()
-        app.exit()
+        self.app.exit()
 
     def on_mount(self) -> None:
         """Called when screen is mounted."""

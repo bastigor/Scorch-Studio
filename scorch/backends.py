@@ -180,12 +180,12 @@ class BackendManager:
             for _ in range(30):  # Max 30 seconds
                 proc.terminate()  # Send SIGTERM
                 await asyncio.sleep(0.5)
-                
+                 
                 if proc.poll() is not None:
                     break
                     
-            except Exception as e:
-                print(f"Error stopping llama-server: {e}")
+        except Exception as e:
+            print(f"Error stopping llama-server: {e}")
 
     async def stop_sd_cli(self) -> None:
         """Stop the sd-cli process."""

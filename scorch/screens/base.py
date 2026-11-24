@@ -1,5 +1,6 @@
 """Base screen class with action handlers."""
 
+from pathlib import Path
 from textual.widgets import Static
 
 
