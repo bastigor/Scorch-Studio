@@ -190,7 +190,7 @@ class ChatScreen(BorderedPanel):
                 await self.add_system_message("Message completed")
                 
         except Exception as e:
-            await self.add_system_message(f"Errorr: {e}")
+            await self.add_system_message(f"Error: {e}")
             self.is_streaming = False
             self.loading_indicator.visible = False
 
@@ -256,7 +256,7 @@ class ChatScreen(BorderedPanel):
                                     if last_msg["role"] == "assistant":
                                         last_msg["content"] += content
                                         
-                            except json.JSONDecodeErrorr:
+                            except json.JSONDecodeError:
                                 continue
 
         except Exception as e:
