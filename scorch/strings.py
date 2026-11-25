@@ -36,7 +36,7 @@ STATUS_SUCCESS = "Success"
 
 # Error messages
 ERROR_NO_MODEL = "No model installed. Go to 'Models' and download one."
-ERROR_BACKEND_NOT_FOUND = f"{backend} is not available. Use CPU or another backend."
+ERROR_BACKEND_NOT_FOUND = "GPU Backend is not available. Use CPU or another backend."
 ERROR_DISK_SPACE = "Disk space error. Check available space at {path}"
 
 # Chat section strings

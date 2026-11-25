@@ -10,7 +10,7 @@ from textual.app import ComposeResult, App
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import (
     Header, Footer, Static, Label, ProgressBar, Button,
-    TextArea, Input, Errorr, RichLog, LoadingIndicator
+    TextArea, Input, RichLog, LoadingIndicator
 )
 from textual.binding import Binding
 from textual.scrollbar import ScrollType
@@ -158,7 +158,7 @@ class ChatScreen(BorderedPanel):
         # Add the bubble
         container.append(bubble)
         
-        self.container.append(container, id=msg.id)
+        self.container.append(container, id=msg_id)
         self.scroll_to_bottom()
         
         return bubble

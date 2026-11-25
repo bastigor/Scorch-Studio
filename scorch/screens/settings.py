@@ -95,7 +95,7 @@ class SettingsScreen(Screen):
             try:
                 ctx_size = int(context_value)
                 config["ctx_size"] = ctx_size
-            except ValueErrorr:
+            except ValueError:
                 pass
         
         # Save configuration
